@@ -8,7 +8,7 @@ import (
 	. "github.com/yah01/future"
 )
 
-func DelayJoin(names []string) string {
+func DelayJoin(names ...string) string {
 	time.Sleep(time.Second)
 	result := strings.Join(names, ", ")
 
@@ -16,7 +16,9 @@ func DelayJoin(names []string) string {
 }
 
 func main() {
-	future := AsyncCall(DelayJoin, []string{"yah01", "zeroone"})
+	future := AsyncCall(func() string {
+		return DelayJoin("yah01", "zer0ne")
+	})
 	result := future.Await()
 
 	fmt.Printf("hello %s", result)
