@@ -23,3 +23,13 @@ func SubmitWithPool[T any](method func() (T, error), pool *Pool) *Future[T] {
 
 	return future
 }
+
+func AwaitAll(futures ..._FutureI) error {
+	for i := range futures {
+		if !futures[i].OK() {
+			return futures[i].Err()
+		}
+	}
+
+	return nil
+}

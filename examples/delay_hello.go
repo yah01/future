@@ -21,5 +21,19 @@ func main() {
 		return res, nil
 	})
 
-	fmt.Printf("hello %s", future.Value())
+	fmt.Printf("hello %s\n", future.Value())
+
+	future1 := Submit(func() (int, error) {
+		time.Sleep(200 * time.Millisecond)
+		return 5, nil
+	})
+
+	future2 := Submit(func() (string, error) {
+		time.Sleep(200 * time.Millisecond)
+		return "hello", nil
+	})
+
+	AwaitAll(future1, future2)
+
+	fmt.Println(future1.Value(), future2.Value())
 }

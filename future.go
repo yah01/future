@@ -4,6 +4,12 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
+type _FutureI interface {
+	Err() error
+	OK() bool
+	mustBeFutureType()
+}
+
 type Future[T any] struct {
 	ch    chan struct{}
 	value T
@@ -42,6 +48,10 @@ func (future *Future[T]) OK() bool {
 
 func (future *Future[T]) Inner() <-chan struct{} {
 	return future.ch
+}
+
+func (future *Future[T]) mustBeFutureType() {
+
 }
 
 type Pool struct {
