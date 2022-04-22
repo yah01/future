@@ -16,7 +16,7 @@ func DelayJoin(names ...string) string {
 }
 
 func main() {
-	future := Submit(func() (any, error) {
+	future := Submit(func() (string, error) {
 		res := DelayJoin("yah01", "zer0ne")
 		return res, nil
 	})
