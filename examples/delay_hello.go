@@ -16,10 +16,10 @@ func DelayJoin(names ...string) string {
 }
 
 func main() {
-	future := AsyncCall(func() string {
-		return DelayJoin("yah01", "zer0ne")
+	future := Submit(func() (any, error) {
+		res := DelayJoin("yah01", "zer0ne")
+		return res, nil
 	})
-	result := future.Await()
 
-	fmt.Printf("hello %s", result)
+	fmt.Printf("hello %s", future.Value())
 }

@@ -1,118 +1,63 @@
 package future
 
 import (
-	"runtime"
+	"github.com/panjf2000/ants/v2"
 )
-
-type Empty = struct{}
-
-type ConcurrencyLimiter struct {
-	limit chan Empty
-}
-
-func NewConcurrencyLimiter(limit int) ConcurrencyLimiter {
-	return ConcurrencyLimiter{
-		limit: make(chan struct{}, limit),
-	}
-}
-
-func (limiter *ConcurrencyLimiter) Acquire() {
-	limiter.limit <- Empty{}
-}
-
-func (limiter *ConcurrencyLimiter) Release() {
-	<-limiter.limit
-}
-
-func (limiter *ConcurrencyLimiter) Len() int {
-	return len(limiter.limit)
-}
-
-func (limiter *ConcurrencyLimiter) Cap() int {
-	return cap(limiter.limit)
-}
-
-var (
-	globalLimiter = NewConcurrencyLimiter(runtime.GOMAXPROCS(0))
-)
-
-func ReplaceGlobalLimiter(limit int) {
-	globalLimiter = NewConcurrencyLimiter(limit)
-}
 
 type Future[T any] struct {
-	value   chan T
-	limiter ConcurrencyLimiter
+	ch    chan struct{}
+	value T
+	err   error
 }
 
-func (future Future[T]) Await() T {
-	return <-future.value
-}
-
-func withGlobalLimiter[T any]() Future[T] {
-	return Future[T]{
-		value:   make(chan T),
-		limiter: globalLimiter,
+func NewFuture[T any]() *Future[T] {
+	return &Future[T]{
+		ch: make(chan struct{}),
 	}
 }
 
-// func AsyncCall[T any](method func() T) Future[T] {
-// 	future := withGlobalLimiter[T]()
-// 	future.limiter.Acquire()
+func (future *Future[T]) Await() (T, error) {
+	<-future.ch
 
-// 	go func() {
-// 		defer future.limiter.Release()
-// 		value := method()
-// 		future.value <- value
-// 	}()
-
-// 	return future
-// }
-
-func AsyncCall[T any](method func() T, limiters ...*ConcurrencyLimiter) Future[T] {
-	var future Future[T]
-	if len(limiters) == 0 {
-		future = withGlobalLimiter[T]()
-	} else {
-		future = Future[T]{
-			value:   make(chan T),
-			limiter: *limiters[0],
-		}
-	}
-	future.limiter.Acquire()
-
-	go func() {
-		defer future.limiter.Release()
-		value := method()
-		future.value <- value
-	}()
-
-	return future
+	return future.value, future.err
 }
 
-// func AsyncCall2[T any, Arg1 any, Arg2 any](method func(arg1 Arg1, arg2 Arg2) T, arg1 Arg1, arg2 Arg2) Future[T] {
-// 	future := withGlobalLimiter[T]()
-// 	future.limiter.Acquire()
+func (future *Future[T]) Value() T {
+	<-future.ch
 
-// 	go func() {
-// 		defer future.limiter.Release()
-// 		value := method(arg1, arg2)
-// 		future.value <- value
-// 	}()
+	return future.value
+}
 
-// 	return future
-// }
+func (future *Future[T]) Err() error {
+	<-future.ch
 
-// func AsyncCall3[T any, Arg1 any, Arg2 any, Arg3 any](method func(arg1 Arg1, arg2 Arg2, arg3 Arg3) T,
-// 	arg1 Arg1, arg2 Arg2, arg3 Arg3) Future[T] {
-// 	future := withGlobalLimiter[T]()
-// 	future.limiter.Acquire()
+	return future.err
+}
 
-// 	go func() {
-// 		defer future.limiter.Release()
-// 		value := method(arg1, arg2, arg3)
-// 		future.value <- value
-// 	}()
+func (future *Future[T]) OK() bool {
+	<-future.ch
 
-// 	return future
-// }
+	return future.err == nil
+}
+
+func (future *Future[T]) Inner() <-chan struct{} {
+	return future.ch
+}
+
+type Pool struct {
+	inner *ants.Pool
+}
+
+func NewRuntime(cap int, opts ...ants.Option) *Pool {
+	pool, err := ants.NewPool(cap, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return &Pool{
+		inner: pool,
+	}
+}
+
+func (r *Pool) Submit(method func()) error {
+	return r.inner.Submit(method)
+}
